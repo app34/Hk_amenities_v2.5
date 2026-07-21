@@ -1,9 +1,9 @@
 // ============================================
 // SERVICE WORKER - OBLU SELECT SANGELI
-// Version: v4.0.5 | Build: 2026-07-21
+// Version: v4.0.2 | Build: 2026-07-21
 // ============================================
 
-const CACHE_NAME = 'oblu-sangeli-hk-cache-v7'; // INCREMENTED VERSION
+const CACHE_NAME = 'oblu-sangeli-hk-cache-v5'; // INCREMENT VERSION FOR UPDATES
 const CACHE_STAMP = Date.now().toString();
 
 const ASSETS = [
@@ -29,6 +29,7 @@ self.addEventListener('install', (e) => {
       })
       .then(() => {
         console.log('[SW] All assets cached successfully');
+        // Force the waiting service worker to become active
         return self.skipWaiting();
       })
       .catch((err) => {
@@ -58,10 +59,12 @@ self.addEventListener('activate', (e) => {
       })
       .then(() => {
         console.log('[SW] Old caches cleared');
+        // Take control of all clients immediately
         return self.clients.claim();
       })
       .then(() => {
         console.log('[SW] Clients claimed');
+        // Notify all clients about the update
         return self.clients.matchAll();
       })
       .then((clients) => {
@@ -78,9 +81,10 @@ self.addEventListener('activate', (e) => {
 });
 
 // ============================================
-// FETCH EVENT
+// FETCH EVENT - Network First with Cache Fallback
 // ============================================
 self.addEventListener('fetch', (e) => {
+  // Skip cross-origin requests
   if (!e.request.url.startsWith(self.location.origin)) {
     return;
   }
@@ -88,6 +92,7 @@ self.addEventListener('fetch', (e) => {
   e.respondWith(
     fetch(e.request)
       .then((response) => {
+        // Cache successful responses
         if (response && response.status === 200) {
           const responseClone = response.clone();
           caches.open(CACHE_NAME)
@@ -101,12 +106,14 @@ self.addEventListener('fetch', (e) => {
         return response;
       })
       .catch(() => {
+        // Fallback to cache
         return caches.match(e.request)
           .then((cachedResponse) => {
             if (cachedResponse) {
               console.log('[SW] Serving from cache:', e.request.url);
               return cachedResponse;
             }
+            // Return a fallback response if needed
             console.log('[SW] No cache found for:', e.request.url);
             return new Response('Offline - Content not available', {
               status: 503,
@@ -137,7 +144,7 @@ self.addEventListener('message', (event) => {
 });
 
 // ============================================
-// PUSH NOTIFICATION
+// PUSH NOTIFICATION (Optional)
 // ============================================
 self.addEventListener('push', (event) => {
   const data = event.data ? event.data.json() : {};
